@@ -1,0 +1,226 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Sex {
+  FEMALE
+  MALE
+  OTHER
+  PREFER_NOT_TO_SAY
+}
+
+enum ActivityLevel {
+  SEDENTARY
+  LIGHT
+  MODERATE
+  VERY_ACTIVE
+  ATHLETE
+}
+
+enum GoalType {
+  LOSE_WEIGHT
+  MAINTAIN
+  GAIN_MUSCLE
+  PERFORMANCE
+}
+
+enum MealType {
+  BREAKFAST
+  LUNCH
+  DINNER
+  SNACK
+}
+
+enum SourceType {
+  USDA
+  OPEN_FOOD_FACTS
+  FALLBACK
+  MANUAL
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+}
+
+enum MessageIntent {
+  ADD
+  EDIT
+  REMOVE
+  UNDO
+  SET_GOALS
+  ERROR
+  INFO
+}
+
+model User {
+  id             String          @id @default(cuid())
+  email          String          @unique
+  name           String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  profile        UserProfile?
+  goals          NutritionGoal?
+  foodEntries    FoodEntry[]
+  dailySummaries DailySummary[]
+  chatMessages   ChatMessage[]
+}
+
+model UserProfile {
+  id            String        @id @default(cuid())
+  userId        String        @unique
+  age           Int?
+  sex           Sex?
+  heightCm      Float?
+  weightKg      Float?
+  activityLevel ActivityLevel?
+  goalType      GoalType?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model NutritionGoal {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  calories     Float
+  protein      Float
+  carbs        Float
+  fat          Float
+  fiber        Float
+  sugar        Float
+  sodium       Float
+  cholesterol  Float
+  saturatedFat Float
+  potassium    Float
+  calcium      Float
+  iron         Float
+  magnesium    Float
+  vitaminA     Float
+  vitaminC     Float
+  vitaminD     Float
+  vitaminB12   Float
+  extraTargets Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model FoodEntry {
+  id                 String               @id @default(cuid())
+  userId             String
+  originalInput      String
+  description        String
+  quantityText       String?
+  amount             Float?
+  unit               String?
+  servingGrams       Float?
+  mealType           MealType             @default(SNACK)
+  loggedAt           DateTime             @default(now())
+  loggedDay          DateTime
+  groupId            String?
+  sourceType         SourceType
+  sourceExternalId   String?
+  sourceName         String
+  brandName          String?
+  matchedDescription String
+  confidence         Float?
+  isAmbiguous        Boolean              @default(false)
+  deletedAt          DateTime?
+  deletedReason      String?
+  replacedByEntryId  String?
+  externalMetadata   Json?
+  extraNutrients     Json?
+  calories           Float
+  protein            Float
+  carbs              Float
+  fat                Float
+  fiber              Float
+  sugar              Float
+  sodium             Float
+  cholesterol        Float
+  saturatedFat       Float
+  potassium          Float
+  calcium            Float
+  iron               Float
+  magnesium          Float
+  vitaminA           Float
+  vitaminC           Float
+  vitaminD           Float
+  vitaminB12         Float
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  user               User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceMetadata     EntrySourceMetadata?
+  replacedBy         FoodEntry?           @relation("EntryReplacement", fields: [replacedByEntryId], references: [id])
+  replaces           FoodEntry[]          @relation("EntryReplacement")
+
+  @@index([userId, loggedDay, deletedAt])
+  @@index([userId, loggedAt])
+  @@index([groupId])
+}
+
+model EntrySourceMetadata {
+  id                   String     @id @default(cuid())
+  foodEntryId          String     @unique
+  query                String
+  matchedName          String
+  brandName            String?
+  sourceType           SourceType
+  sourceName           String
+  externalId           String?
+  householdServingText String?
+  confidence           Float?
+  raw                  Json?
+  createdAt            DateTime   @default(now())
+  foodEntry            FoodEntry  @relation(fields: [foodEntryId], references: [id], onDelete: Cascade)
+}
+
+model DailySummary {
+  id             String   @id @default(cuid())
+  userId         String
+  date           DateTime
+  calories       Float    @default(0)
+  protein        Float    @default(0)
+  carbs          Float    @default(0)
+  fat            Float    @default(0)
+  fiber          Float    @default(0)
+  sugar          Float    @default(0)
+  sodium         Float    @default(0)
+  cholesterol    Float    @default(0)
+  saturatedFat   Float    @default(0)
+  potassium      Float    @default(0)
+  calcium        Float    @default(0)
+  iron           Float    @default(0)
+  magnesium      Float    @default(0)
+  vitaminA       Float    @default(0)
+  vitaminC       Float    @default(0)
+  vitaminD       Float    @default(0)
+  vitaminB12     Float    @default(0)
+  extraNutrients Json?
+  entryCount     Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([userId, date])
+}
+
+model ChatMessage {
+  id        String         @id @default(cuid())
+  userId    String
+  role      MessageRole
+  intent    MessageIntent?
+  content   String
+  metadata  Json?
+  createdAt DateTime       @default(now())
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
